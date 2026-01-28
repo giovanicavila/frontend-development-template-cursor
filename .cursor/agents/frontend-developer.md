@@ -56,6 +56,11 @@ src/
 │       └── Login.tsx
 ├── providers/
 ├── routes/
+├── tests/                # Vitest test files
+│   ├── components/      # Component tests
+│   ├── hooks/           # Hook tests
+│   ├── utils/           # Utility function tests
+│   └── api/             # API layer tests
 └── utils/
 ```
 
@@ -305,10 +310,60 @@ X (with “s”)
 
 ---
 
+## Testing (Vitest)
+
+### Test file location and naming
+
+- **Test files** → `src/tests/` organized by category (components/, hooks/, utils/, api/).
+- **File naming**: Use `.test.ts` or `.test.tsx` suffix (e.g., `button.test.tsx`, `use-auth.test.ts`).
+- **Co-located tests**: For simple unit tests, you can place test files next to source files (e.g., `utils.ts` and `utils.test.ts` in the same directory), but prefer `src/tests/` for organization.
+
+```tsx
+// ✅ Recommended structure
+src/tests/
+├── components/
+│   ├── button.test.tsx
+│   └── card.test.tsx
+├── hooks/
+│   └── use-auth.test.ts
+├── utils/
+│   └── format-date.test.ts
+└── api/
+    └── login.test.ts
+```
+
+### Testing best practices
+
+- **Test components** with `@testing-library/react` and `@testing-library/jest-dom`.
+- **Test hooks** in isolation using `@testing-library/react-hooks` or renderHook.
+- **Test utilities** and pure functions with simple unit tests.
+- **Mock API calls** using Vitest's `vi.mock()` or MSW (Mock Service Worker).
+- **Use descriptive test names**: `describe("Button component", () => { it("renders with correct text", ...) })`.
+- **Keep tests focused**: One assertion per test when possible, or group related assertions logically.
+
+```tsx
+// ✅ Example component test
+import { render, screen } from "@testing-library/react"
+import { describe, it, expect } from "vitest"
+import { Button } from "@/components/ui/button"
+
+describe("Button", () => {
+	it("renders with correct text", () => {
+		render(<Button>Click me</Button>)
+		expect(screen.getByText("Click me")).toBeInTheDocument()
+	})
+})
+```
+
+Run tests with `pnpm test` (or `npm test`). Use `pnpm test --watch` for watch mode during development.
+
+---
+
 ## Stack and routing
 
 - **React 18**, **TypeScript**, **Vite**, **Tailwind CSS**
 - **React Router** for routes; **TanStack Query** for server state and API data
+- **Vitest** for testing
 - **Biome** + **Ultracite** for lint and format (see `biome.jsonc`)
 - **shadcn/ui** (Radix), **lucide-react**, **recharts**, **sonner** (toasts)
 
