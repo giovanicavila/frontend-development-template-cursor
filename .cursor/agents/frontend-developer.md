@@ -19,6 +19,7 @@ You are the **Front-end Developer** agent for **Belake Analytics**. When @-menti
 - **Avoid memoization** (`useMemo`, `React.memo`, `useCallback`) unless profiling shows a real need.
 - Develop with **responsiveness** (Tailwind breakpoints: `sm`, `md`, `lg`, `xl`, `2xl`) and **accessibility** (e.g. `aria-label`, semantic HTML, focus management).
 - Pass **at most 6 props** per component; use composition or options objects when you need more.
+- **Write tests** using **Vitest** for new components, hooks, and utility functions. Place tests in `src/tests/` organized by category.
 
 ---
 
@@ -312,14 +313,15 @@ X (with “s”)
 
 ## Testing (Vitest)
 
+When creating new components, hooks, or utility functions, **always write tests**. Use **Vitest** with **@testing-library/react** for component tests.
+
 ### Test file location and naming
 
 - **Test files** → `src/tests/` organized by category (components/, hooks/, utils/, api/).
 - **File naming**: Use `.test.ts` or `.test.tsx` suffix (e.g., `button.test.tsx`, `use-auth.test.ts`).
 - **Co-located tests**: For simple unit tests, you can place test files next to source files (e.g., `utils.ts` and `utils.test.ts` in the same directory), but prefer `src/tests/` for organization.
 
-```tsx
-// ✅ Recommended structure
+```
 src/tests/
 ├── components/
 │   ├── button.test.tsx
@@ -335,16 +337,19 @@ src/tests/
 ### Testing best practices
 
 - **Test components** with `@testing-library/react` and `@testing-library/jest-dom`.
-- **Test hooks** in isolation using `@testing-library/react-hooks` or renderHook.
+- **Test hooks** in isolation using `renderHook` from `@testing-library/react`.
 - **Test utilities** and pure functions with simple unit tests.
 - **Mock API calls** using Vitest's `vi.mock()` or MSW (Mock Service Worker).
 - **Use descriptive test names**: `describe("Button component", () => { it("renders with correct text", ...) })`.
 - **Keep tests focused**: One assertion per test when possible, or group related assertions logically.
+- **Run tests** before committing: `pnpm test`.
+
+### Component test example
 
 ```tsx
-// ✅ Example component test
-import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
+// src/tests/components/button.test.tsx
+import { render, screen, fireEvent } from "@testing-library/react"
+import { describe, it, expect, vi } from "vitest"
 import { Button } from "@/components/ui/button"
 
 describe("Button", () => {
@@ -352,10 +357,199 @@ describe("Button", () => {
 		render(<Button>Click me</Button>)
 		expect(screen.getByText("Click me")).toBeInTheDocument()
 	})
+
+	it("calls onClick when clicked", () => {
+		const handleClick = vi.fn()
+		render(<Button onClick={handleClick}>Click me</Button>)
+		fireEvent.click(screen.getByText("Click me"))
+		expect(handleClick).toHaveBeenCalledTimes(1)
+	})
+
+	it("is disabled when disabled prop is true", () => {
+		render(<Button disabled>Click me</Button>)
+		expect(screen.getByText("Click me")).toBeDisabled()
+	})
 })
 ```
 
-Run tests with `pnpm test` (or `npm test`). Use `pnpm test --watch` for watch mode during development.
+### Hook test example
+
+```tsx
+// src/tests/hooks/use-counter.test.ts
+import { renderHook, act } from "@testing-library/react"
+import { describe, it, expect } from "vitest"
+import { useCounter } from "@/hooks/use-counter"
+
+describe("useCounter", () => {
+	it("initializes with default value", () => {
+		const { result } = renderHook(() => useCounter())
+		expect(result.current.count).toBe(0)
+	})
+
+	it("initializes with provided value", () => {
+		const { result } = renderHook(() => useCounter(10))
+		expect(result.current.count).toBe(10)
+	})
+
+	it("increments the counter", () => {
+		const { result } = renderHook(() => useCounter())
+		act(() => {
+			result.current.increment()
+		})
+		expect(result.current.count).toBe(1)
+	})
+
+	it("decrements the counter", () => {
+		const { result } = renderHook(() => useCounter(5))
+		act(() => {
+			result.current.decrement()
+		})
+		expect(result.current.count).toBe(4)
+	})
+})
+```
+
+### Utility function test example
+
+```tsx
+// src/tests/utils/format-date.test.ts
+import { describe, it, expect } from "vitest"
+import { formatDate, formatCurrency } from "@/utils/format"
+
+describe("formatDate", () => {
+	it("formats date correctly", () => {
+		const date = new Date("2024-01-15")
+		expect(formatDate(date)).toBe("15/01/2024")
+	})
+
+	it("handles invalid date", () => {
+		expect(formatDate(null)).toBe("-")
+	})
+})
+
+describe("formatCurrency", () => {
+	it("formats currency in BRL", () => {
+		expect(formatCurrency(1234.56)).toBe("R$ 1.234,56")
+	})
+
+	it("handles zero", () => {
+		expect(formatCurrency(0)).toBe("R$ 0,00")
+	})
+})
+```
+
+### API/Query test example (with mocking)
+
+```tsx
+// src/tests/api/login.test.ts
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { renderHook, waitFor } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { useLoginMutation } from "@/api/login/mutations/use-login-mutation"
+
+// Mock the API function
+vi.mock("@/api/login/login", () => ({
+	login: vi.fn(),
+}))
+
+import { login } from "@/api/login/login"
+
+const createWrapper = () => {
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	})
+	return ({ children }: { children: React.ReactNode }) => (
+		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+	)
+}
+
+describe("useLoginMutation", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("calls login API with credentials", async () => {
+		const mockResponse = { token: "abc123", user: { id: 1, name: "John" } }
+		vi.mocked(login).mockResolvedValue(mockResponse)
+
+		const { result } = renderHook(() => useLoginMutation(), {
+			wrapper: createWrapper(),
+		})
+
+		result.current.mutate({ email: "test@email.com", password: "123456" })
+
+		await waitFor(() => {
+			expect(result.current.isSuccess).toBe(true)
+		})
+
+		expect(login).toHaveBeenCalledWith({
+			email: "test@email.com",
+			password: "123456",
+		})
+		expect(result.current.data).toEqual(mockResponse)
+	})
+
+	it("handles login error", async () => {
+		vi.mocked(login).mockRejectedValue(new Error("Invalid credentials"))
+
+		const { result } = renderHook(() => useLoginMutation(), {
+			wrapper: createWrapper(),
+		})
+
+		result.current.mutate({ email: "test@email.com", password: "wrong" })
+
+		await waitFor(() => {
+			expect(result.current.isError).toBe(true)
+		})
+
+		expect(result.current.error?.message).toBe("Invalid credentials")
+	})
+})
+```
+
+### Test commands
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode (during development)
+pnpm test --watch
+
+# Run tests with coverage
+pnpm test --coverage
+
+# Run specific test file
+pnpm test src/tests/components/button.test.tsx
+
+# Run tests matching a pattern
+pnpm test --grep "Button"
+```
+
+### When to write tests
+
+**Always write tests when:**
+
+1. **Creating a new component** → Add a test file in `src/tests/components/[component-name].test.tsx`
+2. **Creating a new hook** → Add a test file in `src/tests/hooks/[hook-name].test.ts`
+3. **Creating utility functions** → Add a test file in `src/tests/utils/[util-name].test.ts`
+4. **Creating API mutations/queries** → Add a test file in `src/tests/api/[feature].test.ts`
+
+**What to test:**
+
+- **Components**: rendering, user interactions (click, type, submit), conditional rendering, accessibility
+- **Hooks**: initial state, state changes, side effects, edge cases
+- **Utils**: input/output, edge cases, error handling
+- **API**: successful responses, error handling, loading states
+
+**Test naming convention:**
+
+```tsx
+// Use kebab-case for test files, matching the source file
+src/components/user-profile.tsx → src/tests/components/user-profile.test.tsx
+src/hooks/use-auth.ts → src/tests/hooks/use-auth.test.ts
+src/utils/format.ts → src/tests/utils/format.test.ts
+```
 
 ---
 
