@@ -244,19 +244,4 @@ Configured in `vite.config.ts` and `tsconfig.json`.
 - [shadcn/ui Documentation](https://ui.shadcn.com)
 - [Vitest Documentation](https://vitest.dev)
 
-## 🤝 Contributing
 
-1. Create a feature branch (`git checkout -b feature/amazing-feature`)
-2. Make your changes following the project conventions
-3. Run linting and tests (`npm run check && npm run test`)
-4. Commit your changes (`git commit -m 'Add amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
-
-## 📄 License
-
-This project is private and proprietary.
-
----
-
-**Happy coding! 🎉**
