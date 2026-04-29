@@ -8,7 +8,7 @@ A production-ready React + TypeScript frontend template built with Vite.
 |---|---|
 | React 19 | UI library |
 | TypeScript | Static type checking |
-| Vite | Build tool and dev server |
+| Vite 8 | Build tool and dev server (oxc and rolldown) |
 | React Router 7 | Client-side routing |
 | TanStack Query v5 | Server state management |
 | Tailwind CSS 4 | Utility-first styling |
